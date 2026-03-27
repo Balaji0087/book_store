@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Reusable blue gradient utilities and global tweaks */
+.input-style {
+    @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300;
+}
+
+.btn-submit {
+    @apply bg-gradient-to-r from-blue-700 via-blue-600 to-blue-400 text-white py-3 rounded-lg hover:opacity-90;
+}
+
+.blue-gradient-bg {
+    @apply bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200;
+}
+
+.btn-gradient-primary {
+    @apply bg-gradient-to-r from-blue-700 to-blue-400 text-white rounded-lg hover:opacity-90;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Global page background */
+body {
+    background-color: #E0F2FE;
+}
+
+/* Utility to force page background on containers */
+.page-bg {
+    background-color: #E0F2FE;
+}
