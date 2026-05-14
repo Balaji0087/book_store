@@ -52,10 +52,10 @@ const AddBooks = () => {
         rating: book.rating ?? 4,
         category: book.category ?? "Fiction",
         description: book.description ?? "",
-        preview: book.image ? `${API_BASE}${book.image}` : "",
+        preview: book.image ? `${IMG_BASE}${book.image}` : "",
         stock: book.stock != null ? String(book.stock) : "",
       });
-      previewUrlRef.current = book.image ? `${API_BASE}${book.image}` : null;
+      previewUrlRef.current = book.image ? `${IMG_BASE}${book.image}` : null;
     } else {
       setIsEditMode(false);
       setEditingId(null);

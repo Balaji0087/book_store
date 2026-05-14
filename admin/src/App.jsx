@@ -40,7 +40,7 @@ const AppContent = () => {
           <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'md:ml-64'}`}>
             <Routes>
               <Route path="/add-books" element={<AddBooks />} />
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/list-books" element={<ListBooks />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/users" element={<Users />} />

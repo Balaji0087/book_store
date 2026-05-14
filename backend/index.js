@@ -23,7 +23,7 @@ const __dirname = path.dirname(__filename);
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+    const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175','https://book-store-frontend-7vz4.onrender.com','https://book-store-admin-tn0r.onrender.com','https://book-store-mcp-server.onrender.com','https://book-store-mcp.onrender.com'];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {

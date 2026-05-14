@@ -12,7 +12,7 @@ export const handleChat = async (req, res) => {
         }
 
         // Forward to Python FastMCP Chat Service
-        const pythonResponse = await axios.post('http://localhost:8001/chat', {
+        const pythonResponse = await axios.post('https://book-store-mcp.onrender.com/chat', {
             message: userMessage,
             user_id: userId,
             role: req.user?.role || 'user',

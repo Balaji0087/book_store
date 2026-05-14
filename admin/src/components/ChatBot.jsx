@@ -157,6 +157,15 @@ const ChatBot = () => {
         const headers = Object.keys(data[0]);
 
         const formatValue = (value, key) => {
+            if (value === null || value === undefined) {
+                return '-';
+            }
+            if (Array.isArray(value)) {
+                return value.map((item) => (typeof item === 'object' ? JSON.stringify(item) : item)).join(', ');
+            }
+            if (typeof value === 'object') {
+                return JSON.stringify(value);
+            }
             // Format price with currency symbol
             if (key.toLowerCase() === 'price' && typeof value === 'number') {
                 return `₹${value}`;

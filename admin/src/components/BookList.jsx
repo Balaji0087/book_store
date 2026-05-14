@@ -299,7 +299,7 @@ const ListBooks = () => {
                     <RatingStars rating={book.rating} />
                   </td>
                   <td className={`${styles.tableCell} flex gap-3`}>
-                    <button onClick={() => navigate('/', { state: { book } })} className={styles.actionButton} title="Edit book">
+                    <button onClick={() => navigate('/add-books', { state: { book } })} className={styles.actionButton} title="Edit book">
                       <Edit3 className="w-5 h-5 text-blue-600" />
                     </button>
 
