@@ -57,6 +57,10 @@ const orderSchema = new mongoose.Schema({
 
   deliveredAt: { type: Date },
   placedAt: { type: Date, default: Date.now },
+  statusTimeline: [{
+    status: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 // Auto-calculate finalAmount before validation

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+import adminAxios from "../utils/adminAxios";
 import { BookPlus, Star } from "lucide-react";
 import { styles } from "../assets/dummyStyles";
 import { toast } from "react-toastify";
-
-const API_BASE = "http://localhost:4000";
+import { IMG_BASE } from "../utils/api";
 
   const initialFormData = {
     title: "",
@@ -16,6 +15,7 @@ const API_BASE = "http://localhost:4000";
     category: "Fiction",
     description: "",
     preview: "",
+    stock: "",
   };
 
   const categories = [
@@ -53,6 +53,7 @@ const AddBooks = () => {
         category: book.category ?? "Fiction",
         description: book.description ?? "",
         preview: book.image ? `${API_BASE}${book.image}` : "",
+        stock: book.stock != null ? String(book.stock) : "",
       });
       previewUrlRef.current = book.image ? `${API_BASE}${book.image}` : null;
     } else {
@@ -124,11 +125,11 @@ const AddBooks = () => {
 
     try {
       if (isEditMode && editingId) {
-        await axios.put(`${API_BASE}/api/book/${editingId}`, payload);
+        await adminAxios.put(`/book/${editingId}`, payload);
         toast.success('Book updated successfully');
         navigate('/list-books');
       } else {
-        await axios.post(`${API_BASE}/api/book`, payload);
+        await adminAxios.post('/book', payload);
         toast.success('Book added successfully');
         setFormData(initialFormData);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -194,6 +195,21 @@ const AddBooks = () => {
                 onChange={handleChange}
                 className={styles.formInput}
                 placeholder="Enter price"
+                required
+              />
+            </div>
+
+            <div className={styles.formItem}>
+              <label htmlFor="stock" className={styles.formLabel}>Stock Quantity</label>
+              <input
+                id="stock"
+                type="number"
+                name="stock"
+                min="0"
+                value={formData.stock}
+                onChange={handleChange}
+                className={styles.formInput}
+                placeholder="Enter stock quantity"
                 required
               />
             </div>

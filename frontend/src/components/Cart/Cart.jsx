@@ -11,9 +11,7 @@ import {
 } from "lucide-react";
 import { styles } from "../../assets/dummystyles";
 import axios from "axios";
-
-const API_BASE = "http://localhost:4000/api";
-const IMG_BASE = API_BASE.replace("/api", "");
+import { API_BASE, IMG_BASE } from "../../utils/api";
 
 const CartPage = () => {
   const { cart, updateCartItem, removeFromCart } = useCart();

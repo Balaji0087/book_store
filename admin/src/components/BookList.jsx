@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import adminAxios from "../utils/adminAxios";
 import { Trash2, Filter, BookOpen, Edit3 } from "lucide-react";
 import { styles } from "../assets/dummyStyles";
 import ConfirmModal from "./ConfirmModal";
 import { toast } from "react-toastify";
-
-const API_BASE = "http://localhost:4000";
+import { IMG_BASE } from "../utils/api";
 
 const ListBooks = () => {
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ const ListBooks = () => {
       setLoading(true);
       setError(null);
       try {
-        const { data } = await axios.get(`${API_BASE}/api/book`);
+        const { data } = await adminAxios.get('/book');
         setBooks(data);
       } catch (err) {
         const errMsg = err.response?.data?.message || "Failed to fetch books.";
@@ -62,9 +61,13 @@ const ListBooks = () => {
     { key: "author", label: "Author" },
     { key: null, label: "Category" },
     { key: "price", label: "Price" },
+    { key: "stock", label: "Stock" },
     { key: "rating", label: "Rating" },
     { key: null, label: "Actions" },
   ];
+
+  const [editingStock, setEditingStock] = useState(null);
+  const [stockValue, setStockValue] = useState('');
 
   // selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState([]);
@@ -74,9 +77,27 @@ const ListBooks = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const openDeleteModal = (id) => {
-    setDeletingId(id);
-    setIsConfirmOpen(true);
+  const handleStockEdit = (bookId, currentStock) => {
+    setEditingStock(bookId);
+    setStockValue(currentStock.toString());
+  };
+
+  const handleStockSave = async (bookId) => {
+    try {
+      await adminAxios.put(`/book/${bookId}`, { stock: parseInt(stockValue) });
+      setBooks(books.map(book => 
+        book._id === bookId ? { ...book, stock: parseInt(stockValue) } : book
+      ));
+      setEditingStock(null);
+      toast.success('Stock updated successfully');
+    } catch (error) {
+      toast.error('Failed to update stock');
+    }
+  };
+
+  const handleStockCancel = () => {
+    setEditingStock(null);
+    setStockValue('');
   };
 
   const toggleSelect = (id) => {
@@ -101,7 +122,7 @@ const ListBooks = () => {
     if (!deletingId) return;
     setDeleteLoading(true);
     try {
-      await axios.delete(`${API_BASE}/api/book/${deletingId}`);
+      await adminAxios.delete(`/book/${deletingId}`);
       setBooks((prev) => prev.filter((book) => book._id !== deletingId));
       setIsConfirmOpen(false);
       setDeletingId(null);
@@ -116,11 +137,16 @@ const ListBooks = () => {
     }
   };
 
+  const openDeleteModal = (bookId) => {
+    setDeletingId(bookId);
+    setIsConfirmOpen(true);
+  };
+
   const handleBulkDeleteConfirm = async () => {
     if (!selectedIds.length) return;
     setDeleteLoading(true);
     try {
-      await Promise.all(selectedIds.map((id) => axios.delete(`${API_BASE}/api/book/${id}`)));
+      await Promise.all(selectedIds.map((id) => adminAxios.delete(`/book/${id}`)));
       setBooks((prev) => prev.filter((book) => !selectedIds.includes(book._id)));
       toast.success(`${selectedIds.length} books deleted successfully`);
       setSelectedIds([]);
@@ -224,7 +250,7 @@ const ListBooks = () => {
 
                   <td className={styles.tableCell}>
                     <div className="flex items-center">
-                      {book.image && <img src={`http://localhost:4000${book.image}`} alt={book.title} className="h-10 w-8 object-cover rounded" />}
+                      {book.image && <img src={`${IMG_BASE}${book.image}`} alt={book.title} className="h-10 w-8 object-cover rounded" />}
                       <div className="ml-4">
                         <div className={styles.bookTitle}>{book.title}</div>
                       </div>
@@ -236,6 +262,39 @@ const ListBooks = () => {
                     <span className={styles.categoryBadge}>{book.category}</span>
                   </td>
                   <td className={styles.tableCell}>₹{book.price}</td>
+                  <td className={styles.tableCell}>
+                    {editingStock === book._id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={stockValue}
+                          onChange={(e) => setStockValue(e.target.value)}
+                          className="w-16 px-2 py-1 text-sm border rounded"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleStockSave(book._id)}
+                          className="text-green-600 hover:text-green-800 text-sm"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={handleStockCancel}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <span 
+                        className={`${book.stock === 0 ? 'text-red-600' : book.stock < 10 ? 'text-yellow-600' : 'text-green-600'} font-medium cursor-pointer hover:underline`}
+                        onClick={() => handleStockEdit(book._id, book.stock)}
+                      >
+                        {book.stock}
+                      </span>
+                    )}
+                  </td>
                   <td className={styles.tableCell}>
                     <RatingStars rating={book.rating} />
                   </td>

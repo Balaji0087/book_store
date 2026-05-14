@@ -8,9 +8,7 @@ import axios from "axios";
 import { useCart } from "../../CartContext/CartContext";
 import { ShoppingCart, Plus, Minus, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { ourBestSellersStyles as styles } from "../../assets/dummystyles";
-
-// Base URL of your backend
-const API_BASE = "http://localhost:4000";
+import { API_BASE } from "../../utils/api";
 
 const OurBestSellers = () => {
   const { cart, addToCart, updateCartItem } = useCart();
@@ -29,7 +27,7 @@ const OurBestSellers = () => {
     const fetchBooks = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_BASE}/api/book`);
+        const res = await axios.get(`${API_BASE}/book`);
         setBooks(Array.isArray(res.data) ? res.data : res.data.books || []);
       } catch (err) {
         console.error('Error fetching best sellers:', err);

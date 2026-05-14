@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { loginStyles } from "../../assets/dummystyles";
+import { API_BASE } from "../../utils/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Login = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("http://localhost:4000/api/user/login", {
+      const res = await fetch(`${API_BASE}/user/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,7 +57,7 @@ const Login = () => {
       setToast({ visible: true, message: "Login successful", type: "success" });
 
       // Redirect after short delay
-      setTimeout(() => navigate("/"), 2000);
+      setTimeout(() => navigate("/"), 500);
     } catch (err) {
       setToast({ visible: true, message: err.message, type: "error" });
     } finally {

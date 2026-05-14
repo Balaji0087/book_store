@@ -5,10 +5,8 @@ import { useCart } from '../../CartContext/CartContext';
 import Navbar from '../Navbar/Navbar';
 import Footer from '../Footer/Footer';
 import axios from 'axios';
-
-// Base URLs for API and image serving
-const API_BASE = "http://localhost:4000/api";
-const IMG_BASE = API_BASE.replace("/api", "");
+import { contactPageStyles as toastStyles } from '../../assets/dummystyles';
+import { API_BASE, IMG_BASE } from '../../utils/api';
 
 const Checkout = () => {
   const { cart, clearCart } = useCart();
@@ -18,6 +16,9 @@ const Checkout = () => {
   });
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [lastOrderData, setLastOrderData] = useState(null);
+  const [lastOrderItems, setLastOrderItems] = useState([]);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   // capture total before clearing
   const [orderTotal, setOrderTotal] = useState(0);
 
@@ -38,6 +39,30 @@ const Checkout = () => {
       .catch(err => console.error("Could not load book images:", err));
   }, []);
 
+  const sendOrderDetailsByEmail = async () => {
+    if (!lastOrderData?._id) {
+      setToast({ visible: true, message: 'No order available for email', type: 'error' });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.post(
+        `${API_BASE}/order/${lastOrderData._id}/send-email`,
+        {},
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : undefined,
+          },
+        }
+      );
+      setToast({ visible: true, message: 'Order details email sent successfully.', type: 'success' });
+    } catch (err) {
+      console.error('Send email error:', err);
+      setToast({ visible: true, message: 'Failed to send order email.', type: 'error' });
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -47,6 +72,12 @@ const Checkout = () => {
   const subtotal = calculateTotal();
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
+
+  useEffect(() => {
+    if (!toast.visible) return;
+    const timer = setTimeout(() => setToast((old) => ({ ...old, visible: false })), 3000);
+    return () => clearTimeout(timer);
+  }, [toast.visible]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -110,8 +141,14 @@ const items = cart.items.map(item => ({
         return;
       }
 
-      setOrderId(data.order?.orderId || null);
+      const savedOrder = data.order || null;
+      setOrderId(savedOrder?.orderId || null);
+      setLastOrderData(savedOrder);
+      setLastOrderItems(items);
       setOrderPlaced(true);
+
+      // backend already sends confirmation email for created order
+      // optional manual resend via button below.
 
     } catch (err) {
       console.error('Order submission error:', err);
@@ -122,6 +159,9 @@ const items = cart.items.map(item => ({
   if (orderPlaced) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#60A5FA] to-[#E0F2FE] py-20">
+        {toast.visible && (
+          <div className={toastStyles.toastStyle(toast.type)}>{toast.message}</div>
+        )}
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
@@ -170,6 +210,12 @@ const items = cart.items.map(item => ({
               <Link to="/orders" className="px-6 py-3 bg-white border border-[#60A5FA] text-[#60A5FA] rounded-lg font-medium hover:bg-[#60A5FA]/10">
                 View Order Details
               </Link>
+              <button
+                onClick={sendOrderDetailsByEmail}
+                className="px-6 py-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600"
+              >
+                Resend order confirmation email
+              </button>
             </div>
           </div>
         </div>
@@ -215,6 +261,9 @@ const items = cart.items.map(item => ({
   return (
     <>
       <Navbar/> 
+      {toast.visible && (
+        <div className={toastStyles.toastStyle(toast.type)}>{toast.message}</div>
+      )}
       <div className="min-h-screen bg-gradient-to-br pt-28 from-[#60A5FA] to-[#E0F2FE] py-12">
         <div className="container mx-auto px-4">
           <Link to="/cart" className="inline-flex items-center text-[#1E3A8A] font-medium mb-6 hover:underline">

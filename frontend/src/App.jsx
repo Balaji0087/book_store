@@ -13,6 +13,7 @@ import MyOrders from "./components/MyOrders/MyOrders";
 import Checkout from "./components/Checkout/Checkout";
 import VerifyPaymentPage from "./pages/VerifyPaymentPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
+import ChatBot from "./components/ChatBot/ChatBot";
 
 const App = () => {
   return (
@@ -37,6 +38,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
       </Routes>
+      <ChatBot />
     </CartProvider>
   );
 };

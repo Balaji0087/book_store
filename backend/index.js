@@ -11,6 +11,8 @@ import userRouter from './routes/userRoute.js';
 import bookRouter from './routes/bookRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import cartRouter from './routes/cartRoute.js';
+import reportRouter from './routes/reportRoute.js';
+import chatRouter from './routes/chatRoute.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -43,6 +45,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/book', bookRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/report', reportRouter);
+app.use('/api/chat', chatRouter);
 
 app.get('/', (req, res) => {
   res.send('API Working');

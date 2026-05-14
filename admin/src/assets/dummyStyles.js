@@ -32,6 +32,7 @@ export const styles = {
   
   // Table
   ordersTableContainer: "bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden",
+  tableWrapper: "overflow-auto max-h-96",
   table: "min-w-full",
   tableHead: "bg-gray-50 border-b border-gray-200",
   tableHeader: "px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer group",
@@ -42,12 +43,12 @@ export const styles = {
   customerCell: "text-sm text-gray-900",
   dateCell: "text-sm text-gray-500",
   amountCell: "text-sm font-medium text-gray-900",
-  paymentBadge: (isOnline) => 
-    `flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-      isOnline 
-        ? "bg-purple-100 text-purple-800" 
-        : "bg-orange-100 text-orange-800"
-    }`,
+  paymentBadge: (isOnline) =>
+    "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium " +
+    (isOnline
+      ? "bg-purple-100 text-purple-800"
+      : "bg-orange-100 text-orange-800"
+    ),
   viewButton: "px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-xs hover:bg-indigo-200 transition-colors",
   
   // Empty State
@@ -66,9 +67,9 @@ export const styles = {
   legendLabel: "text-xs text-gray-600",
   
   // Modal
-  modalOverlay: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm",
-  modalContainer: "bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto",
-  modalHeader: "border-b border-gray-200 p-8 flex justify-between items-start",
+  modalOverlay: "fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-lg",
+  modalContainer: "bg-white border border-white/30 shadow-2xl rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border-opacity-60 backdrop-saturate-150",
+  modalHeader: "border-b border-white/25 p-6 flex justify-between items-start",
   modalTitle: "text-2xl font-bold text-gray-900",
   modalSubtitle: "text-gray-600 text-base mt-2",
   closeButton: "text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors",
@@ -192,10 +193,9 @@ export const styles = {
   previewImg: "w-full h-full object-cover",
   submitContainer: "mt-8 flex justify-center",
   submitButton: "flex items-center gap-2 px-6 py-3 bg-[#43C6AC] text-white font-medium rounded-lg hover:bg-[#5ba193] transition-colors",
-  // Sidebar specific styles
   sidebar: {
     container: (isCollapsed) => 
-      `bg-gradient-to-t from-blue-300 via-blue-200 to-blue-100 text-blue-800 min-h-screen p-4 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`,
+      `fixed top-0 left-0 z-40 bg-gradient-to-t from-blue-300 via-blue-200 to-blue-100 text-blue-800 h-screen p-4 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'w-20' : 'w-64'}`,
     header: "flex justify-between items-center mb-8",
     logoContainer: "flex items-center gap-3",
     logoImageContainer: "bg-white p-2 rounded-lg",

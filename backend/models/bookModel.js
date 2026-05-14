@@ -9,7 +9,8 @@ const bookSchema = new mongoose.Schema({
   },
   rating: { type: Number, default: 4, min: 1, max: 5 },
   category: { type: String, required: true },
-  description: { type: String }
+  description: { type: String },
+  stock: { type: Number, default: 0, min: 0 }
 }, { timestamps: true });
 
 const Book = mongoose.model('Book', bookSchema);

@@ -3,7 +3,8 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createBook, getBooks, updateBook,deleteBook } from '../controllers/bookController.js';
+import { createBook, getBooks, updateBook, deleteBook, getRecommendations } from '../controllers/bookController.js';
+import { adminAuthMiddleware, default as authMiddleware } from '../middlewares/authMiddleware.js';
 
 const bookRouter = express.Router();
 
@@ -14,9 +15,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-bookRouter.post('/', upload.single('image'), createBook);
+bookRouter.post('/', adminAuthMiddleware, upload.single('image'), createBook);
+bookRouter.get('/recommendations', authMiddleware, getRecommendations);
 bookRouter.get('/', getBooks);
-bookRouter.put('/:id', upload.single('image'), updateBook); // Reuse createBook for updates
-bookRouter.delete('/:id', deleteBook);
+bookRouter.put('/:id', adminAuthMiddleware, upload.single('image'), updateBook); // Reuse createBook for updates
+bookRouter.delete('/:id', adminAuthMiddleware, deleteBook);
 
 export default bookRouter;

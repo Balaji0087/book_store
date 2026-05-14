@@ -1,5 +1,6 @@
 import { createContext, useReducer, useContext, useEffect } from "react";
 import axios from "axios";
+import { API_BASE } from "../utils/api";
 
 const CartContext = createContext();
 
@@ -77,7 +78,7 @@ export const CartProvider = ({ children }) => {
       const token = localStorage.getItem("authToken");
       if (!token) return;
       try {
-        const { data } = await axios.get("http://localhost:4000/api/cart", {
+        const { data } = await axios.get(`${API_BASE}/cart`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 // flatten each { book, quantity } into { id, title, price, author, quantity }
@@ -113,7 +114,7 @@ console.log("▶️ addToCart called for product", product);
     if (token) {
       try {
         const { data } = await axios.post(
-          "http://localhost:4000/api/cart/add",
+          `${API_BASE}/cart/add`,
           { bookId: product.id, quantity: qty },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -149,7 +150,7 @@ const token = localStorage.getItem("authToken");
     if (token) {
       try {
         await axios.put(
-          "http://localhost:4000/api/cart/update",
+          `${API_BASE}/cart/update`,
           { bookId: id, quantity },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -168,7 +169,7 @@ const token = localStorage.getItem("authToken");
     if (token) {
       try {
         await axios.delete(
-          `http://localhost:4000/api/cart/remove/${id}`,
+          `${API_BASE}/cart/remove/${id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         dispatch({ type: "REMOVE_ITEM", payload: { id, source } });
@@ -185,7 +186,7 @@ const token = localStorage.getItem("authToken");
     const token = localStorage.getItem("authToken");
     if (token) {
       try {
-        await axios.delete("http://localhost:4000/api/cart/clear", {
+        await axios.delete(`${API_BASE}/cart/clear`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } catch (err) {

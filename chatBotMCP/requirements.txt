@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pymongo
+openai
+python-dotenv
+mcp
+numpy
+fastmcp
+torch
+transformers
+accelerate
+groq
+sentence-transformers

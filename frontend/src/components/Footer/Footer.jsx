@@ -70,7 +70,7 @@ const Footer = () => {
             <div className={styles.contactList}>
               <div className={styles.contactItem}>
                 <MapPin className={styles.contactIcon} />
-                <span>123 Literary Lane, Bookville, BK 12345</span>
+                <span>2440 Old Milton Parkway, Suite 115, Alpharetta, GA 30009</span>
               </div>
               <div className={styles.contactRow}>
                 <Phone className={styles.contactIconInline} />
@@ -88,13 +88,6 @@ const Footer = () => {
           <p className={styles.copyrightText}>
             &copy; {new Date().getFullYear()} BookStore. All rights reserved.
           </p>
-          <a href="https://hexagondigitalservices.com"
-            target="_blank"
-            className=" text-sm cursor-pointer text-gray-500 hover:text-purple-600">
-            Powered By {" "}
-            <br />
-            Hexagon Digital Services
-          </a>
         </div>
       </div>
     </footer>

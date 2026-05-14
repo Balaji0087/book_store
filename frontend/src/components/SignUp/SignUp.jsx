@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft, User, Mail, Lock } from "lucide-react";
 import { Signup } from "../../assets/dummystyles";
+import { API_BASE } from "../../utils/api";
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -39,7 +40,7 @@ const SignUp = () => {
     setToast({ visible: true, message: "Creating account...", type: "info" });
 
     try {
-      const res = await fetch("http://localhost:4000/api/user/register", {
+      const res = await fetch(`${API_BASE}/user/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

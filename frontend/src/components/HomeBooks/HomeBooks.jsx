@@ -4,8 +4,7 @@ import { ShoppingCart, ArrowRight, Plus, Minus, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "../../CartContext/CartContext";
 import { homeBooksStyles as styles } from "../../assets/dummystyles";
-
-const API_BASE = "http://localhost:4000";
+import { API_BASE, IMG_BASE } from "../../utils/api";
 
 const HomeBooks = () => {
   const { cart, addToCart, updateCartItem } = useCart();
@@ -22,7 +21,7 @@ const HomeBooks = () => {
     const fetchBooks = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_BASE}/api/book`);
+        const res = await axios.get(`${API_BASE}/book`);
         const list = Array.isArray(res.data) ? res.data : res.data.books || [];
         setBooks(list);
       } catch (err) {
@@ -63,7 +62,7 @@ const HomeBooks = () => {
                       src={
                         book.image.startsWith('http')
                           ? book.image
-                          : `${API_BASE}${book.image}`
+                          : `${IMG_BASE}${book.image}`
                       }
                       alt={book.title}
                       className={styles.image}

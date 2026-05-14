@@ -37,6 +37,7 @@ export async function registerUser(req, res) {
       name: username,
       email,
       password: hashedPassword,
+      role: 'user', // Default role
     });
 
     const token = createToken(user._id);
@@ -49,6 +50,7 @@ export async function registerUser(req, res) {
         id: user._id,
         username: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -85,6 +87,7 @@ export async function loginUser(req, res) {
         id: user._id,
         username: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -173,7 +176,7 @@ export async function deleteUser(req, res) {
 }
 
 export async function createUser(req, res) {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ success: false, message: "Name and email are required." });
@@ -181,6 +184,11 @@ export async function createUser(req, res) {
 
   if (!validator.isEmail(email)) {
     return res.status(400).json({ success: false, message: "Invalid email." });
+  }
+
+  // Validate role
+  if (role && !['user', 'admin'].includes(role)) {
+    return res.status(400).json({ success: false, message: "Invalid role. Must be 'user' or 'admin'." });
   }
 
   try {
@@ -204,6 +212,7 @@ export async function createUser(req, res) {
       name,
       email,
       password: hashedPassword,
+      role: role || 'user', // Default to 'user' if no role provided
     });
 
     res.status(201).json({
@@ -213,11 +222,95 @@ export async function createUser(req, res) {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt
       }
     });
   } catch (error) {
     console.error("Create user error:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+}
+
+export async function createAdmin(req, res) {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: "All fields are required." });
+  }
+
+  if (!validator.isEmail(email)) {
+    return res.status(400).json({ success: false, message: "Invalid email." });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: "Password must be at least 8 characters." });
+  }
+
+  try {
+    const userExists = await userModel.findOne({ email });
+    if (userExists) {
+      return res.status(409).json({ success: false, message: "User already exists." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await userModel.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin',
+    });
+
+    const token = createToken(user._id);
+
+    res.status(201).json({
+      success: true,
+      message: "Admin account created successfully.",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Create admin error:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+}
+
+export async function viewBook(req, res) {
+  try {
+    const userId = req.user._id;
+    const { id: bookId } = req.params;
+
+    if (!userId || !bookId) {
+      return res.status(400).json({ success: false, message: "Missing user or book ID" });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if the book is already in viewedBooks, if so remove it to add it to the front
+    user.viewedBooks = user.viewedBooks.filter(item => item.bookId.toString() !== bookId);
+    
+    // Add to beginning of array
+    user.viewedBooks.unshift({ bookId, viewedAt: new Date() });
+
+    // Keep only last 50 viewed books
+    if (user.viewedBooks.length > 50) {
+      user.viewedBooks = user.viewedBooks.slice(0, 50);
+    }
+
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Book view recorded." });
+  } catch (error) {
+    console.error("View book error:", error);
     res.status(500).json({ success: false, message: "Server error." });
   }
 }

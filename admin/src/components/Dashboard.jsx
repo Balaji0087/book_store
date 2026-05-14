@@ -12,7 +12,8 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
-import axios from 'axios';
+import adminAxios from '../utils/adminAxios';
+import { IMG_BASE } from '../utils/api';
 import {
   BookOpen,
   ShoppingCart,
@@ -52,6 +53,12 @@ const Dashboard = () => {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [rawBooks, setRawBooks] = useState([]);
+  const [rawOrders, setRawOrders] = useState([]);
+  const [rawUsers, setRawUsers] = useState([]);
   const [booksData, setBooksData] = useState({
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [{
@@ -98,6 +105,7 @@ const Dashboard = () => {
     }],
   });
   const [users, setUsers] = useState([]);
+  const [lowStockBooks, setLowStockBooks] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
 
   const getRelativeTime = (date) => {
@@ -154,10 +162,10 @@ const Dashboard = () => {
           easing: 'easeOutQuart',
         },
         callbacks: {
-          title: function(context) {
+          title: function (context) {
             return context[0].label;
           },
-          label: function(context) {
+          label: function (context) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
@@ -186,7 +194,7 @@ const Dashboard = () => {
           color: 'rgba(0, 0, 0, 0.05)',
         },
         ticks: {
-          callback: function(value) {
+          callback: function (value) {
             return new Intl.NumberFormat().format(value);
           },
         },
@@ -261,10 +269,10 @@ const Dashboard = () => {
           easing: 'easeOutQuart',
         },
         callbacks: {
-          title: function(context) {
+          title: function (context) {
             return context[0].label;
           },
-          label: function(context) {
+          label: function (context) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
@@ -288,7 +296,7 @@ const Dashboard = () => {
           color: 'rgba(0, 0, 0, 0.05)',
         },
         ticks: {
-          callback: function(value) {
+          callback: function (value) {
             return '₹' + value.toLocaleString('en-IN');
           },
         },
@@ -370,7 +378,7 @@ const Dashboard = () => {
           easing: 'easeOutQuart',
         },
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             const label = context.label || '';
             const value = context.parsed;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -392,36 +400,25 @@ const Dashboard = () => {
       try {
         setLoading(true);
 
-        // Fetch books data
-        const booksResponse = await axios.get('http://localhost:4000/api/book');
-        const books = booksResponse.data.books || booksResponse.data || [];
+        const booksResponse = await adminAxios.get('/book');
+        const booksData = booksResponse.data.books || booksResponse.data || [];
 
-        // Fetch orders data
-        const ordersResponse = await axios.get('http://localhost:4000/api/order');
-        const orders = ordersResponse.data.orders || ordersResponse.data || [];
+        const ordersResponse = await adminAxios.get('/order');
+        const ordersData = ordersResponse.data.orders || ordersResponse.data || [];
 
-        // Fetch users data
-        const usersResponse = await axios.get('http://localhost:4000/api/user/all');
-        const users = usersResponse.data.users || [];
+        const usersResponse = await adminAxios.get('/user/all');
+        const usersData = usersResponse.data.users || [];
 
-        // Process books data
-        processBooksData(books);
+        const lowStockResponse = await adminAxios.get('/report/inventory?stockLevel=low');
+        const lowStockBooks = lowStockResponse.data.data || [];
+        setLowStockBooks(lowStockBooks.slice(0, 5));
 
-        // Process orders data
-        processOrdersData(orders);
-
-        // Process users data
-        processUsersData(users);
-
-        // Update stats
-        updateStats(books, orders, users);
-
-        // Generate recent activity
-        generateRecentActivity(books, orders, users);
+        setRawBooks(booksData);
+        setRawOrders(ordersData);
+        setRawUsers(usersData);
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Fallback to mock data if API fails
         setMockData();
       } finally {
         setLoading(false);
@@ -431,22 +428,109 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    if (!rawBooks.length && !rawOrders.length && !rawUsers.length) return;
+
+    let targetStartDate = new Date(0);
+    let targetEndDate = new Date();
+    const now = new Date();
+    targetEndDate.setHours(23, 59, 59, 999);
+
+    // 1. Determine base time bounds
+    if (timeFilter === '7days') {
+      targetStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (timeFilter === '30days') {
+      targetStartDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (timeFilter === '6months') {
+      targetStartDate = new Date(now.setMonth(now.getMonth() - 6));
+    } else if (timeFilter === '1year') {
+      targetStartDate = new Date(now.setFullYear(now.getFullYear() - 1));
+    } else if (timeFilter === 'custom') {
+      if (dateRange.startDate) targetStartDate = new Date(dateRange.startDate);
+      if (dateRange.endDate) {
+        targetEndDate = new Date(dateRange.endDate);
+        targetEndDate.setHours(23, 59, 59, 999);
+      }
+    }
+
+    // 2. Apply precise filtering
+    let filteredBooks = rawBooks.filter(b => {
+      const d = new Date(b.createdAt || b.dateAdded || Date.now());
+      const inDateRange = d >= targetStartDate && d <= targetEndDate;
+      const matchCategory = categoryFilter ? (b.category === categoryFilter) : true;
+      return inDateRange && matchCategory;
+    });
+
+    let filteredOrders = rawOrders.filter(o => {
+      const d = new Date(o.createdAt || o.placedAt || Date.now());
+      const inDateRange = d >= targetStartDate && d <= targetEndDate;
+
+      // Attempt generic category lookup if provided
+      let matchCategory = true;
+      if (categoryFilter && o.books && Array.isArray(o.books)) {
+        matchCategory = o.books.some(item => (item.category === categoryFilter) || (item.book && item.book.category === categoryFilter));
+      }
+      return inDateRange && matchCategory;
+    });
+
+    let filteredUsers = rawUsers.filter(u => {
+      const d = new Date(u.createdAt || Date.now());
+      return d >= targetStartDate && d <= targetEndDate;
+    });
+
+    processBooksData(filteredBooks);
+    processOrdersData(filteredOrders);
+    processUsersData(filteredUsers);
+    updateStats(filteredBooks, filteredOrders, filteredUsers);
+    generateRecentActivity(filteredBooks, filteredOrders, filteredUsers);
+  }, [timeFilter, dateRange, categoryFilter, rawBooks, rawOrders, rawUsers]);
+
   const processBooksData = (books) => {
-    // Group books by category
+    const monthlyBooks = {};
+    const sortedBooks = [...books].sort((a, b) => new Date(a.createdAt || a.dateAdded || Date.now()) - new Date(b.createdAt || b.dateAdded || Date.now()));
+
+    if (sortedBooks.length > 0) {
+      const firstDate = new Date(sortedBooks[0].createdAt || sortedBooks[0].dateAdded || Date.now());
+      const now = new Date();
+      let currentDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+      while (currentDate <= now) {
+        const monthKey = currentDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+        monthlyBooks[monthKey] = 0;
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+
+    books.forEach(book => {
+      const date = new Date(book.createdAt || book.dateAdded || Date.now());
+      const monthKey = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      monthlyBooks[monthKey] = (monthlyBooks[monthKey] || 0) + 1;
+    });
+
+    const monthLabels = Object.keys(monthlyBooks);
+    const monthValues = Object.values(monthlyBooks);
+
+    setBooksData({
+      labels: monthLabels.length ? monthLabels : ['No Data'],
+      datasets: [{
+        label: 'Books Added',
+        data: monthValues.length ? monthValues : [0],
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.4,
+      }],
+    });
+
+    // Process category data
     const categoryCount = {};
     books.forEach(book => {
       const category = book.category || 'Others';
       categoryCount[category] = (categoryCount[category] || 0) + 1;
     });
 
-    // Create category chart data
-    const categoryLabels = Object.keys(categoryCount);
-    const categoryValues = Object.values(categoryCount);
-
     setCategoryData({
-      labels: categoryLabels,
+      labels: Object.keys(categoryCount).length ? Object.keys(categoryCount) : ['No Categories'],
       datasets: [{
-        data: categoryValues,
+        data: Object.values(categoryCount).length ? Object.values(categoryCount) : [1],
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)',
           'rgba(16, 185, 129, 0.8)',
@@ -458,61 +542,83 @@ const Dashboard = () => {
         borderWidth: 1,
       }],
     });
-
-    // Create books trend data (mock for now - could be based on createdAt dates)
-    setBooksData({
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      datasets: [{
-        label: 'Books Added',
-        data: [12, 19, 15, 25, 22, books.length], // Last value is real
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.4,
-      }],
-    });
   };
 
   const processOrdersData = (orders) => {
-    // Calculate monthly orders
+    const sortedOrders = [...orders].sort((a, b) => new Date(a.createdAt || a.placedAt || Date.now()) - new Date(b.createdAt || b.placedAt || Date.now()));
     const monthlyOrders = {};
+
+    if (sortedOrders.length > 0) {
+      const firstDate = new Date(sortedOrders[0].createdAt || sortedOrders[0].placedAt || Date.now());
+      const now = new Date();
+      let currentDate = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+      while (currentDate <= now) {
+        const monthKey = currentDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+        monthlyOrders[monthKey] = 0;
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+
     orders.forEach(order => {
-      const date = new Date(order.createdAt || order.date);
-      const month = date.toLocaleString('default', { month: 'short' });
-      monthlyOrders[month] = (monthlyOrders[month] || 0) + 1;
+      const date = new Date(order.createdAt || order.placedAt || Date.now());
+      const monthKey = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      monthlyOrders[monthKey] = (monthlyOrders[monthKey] || 0) + 1;
     });
 
     const monthLabels = Object.keys(monthlyOrders);
     const monthValues = Object.values(monthlyOrders);
 
     setOrdersData({
-      labels: monthLabels,
+      labels: monthLabels.length ? monthLabels : ['No Data'],
       datasets: [{
         label: 'Orders',
-        data: monthValues,
+        data: monthValues.length ? monthValues : [0],
         backgroundColor: 'rgba(16, 185, 129, 0.8)',
         borderColor: 'rgb(16, 185, 129)',
         borderWidth: 1,
       }],
     });
 
-    // Calculate weekly revenue from actual data
+    // Generate Weekly revenue dynamically based on all data
     const weeklyRevenue = {};
+    if (sortedOrders.length > 0) {
+      const firstDate = new Date(sortedOrders[0].createdAt || sortedOrders[0].placedAt || Date.now());
+      firstDate.setDate(firstDate.getDate() - firstDate.getDay()); // Start of week
+      const now = new Date();
+      let currentDate = new Date(firstDate);
+
+      while (currentDate <= now) {
+        const weekEnd = new Date(currentDate);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekKey = `${currentDate.getDate()}/${currentDate.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`;
+        weeklyRevenue[weekKey] = 0;
+        currentDate.setDate(currentDate.getDate() + 7);
+      }
+    }
+
     orders.forEach(order => {
-      const date = new Date(order.createdAt || order.date);
-      const weekNum = Math.ceil((date.getDate() - date.getDay() + 1) / 7); // Get week of month
-      const weekKey = `Week ${weekNum}`;
-      weeklyRevenue[weekKey] = (weeklyRevenue[weekKey] || 0) + (order.totalAmount || order.amount || 0);
+      const date = new Date(order.createdAt || order.placedAt || Date.now());
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      const weekKey = `${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}`;
+
+      if (weeklyRevenue[weekKey] !== undefined) {
+        weeklyRevenue[weekKey] += (order.totalAmount || order.finalAmount || order.amount || 0);
+      } else {
+        weeklyRevenue[weekKey] = (order.totalAmount || order.finalAmount || order.amount || 0);
+      }
     });
 
-    // If no data, use mock data
-    const revenueLabels = Object.keys(weeklyRevenue).length > 0 ? Object.keys(weeklyRevenue) : ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    const revenueValues = Object.keys(weeklyRevenue).length > 0 ? Object.values(weeklyRevenue) : [1200, 1900, 1500, 2100];
+    const revenueLabels = Object.keys(weeklyRevenue);
+    const revenueValues = Object.values(weeklyRevenue);
 
     setRevenueData({
-      labels: revenueLabels,
+      labels: revenueLabels.length ? revenueLabels : ['No Data'],
       datasets: [{
         label: 'Revenue (₹)',
-        data: revenueValues,
+        data: revenueValues.length ? revenueValues : [0],
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         tension: 0.4,
@@ -586,7 +692,7 @@ const Dashboard = () => {
   const updateStats = (books, orders, users) => {
     // Calculate total revenue from orders
     const totalRevenue = orders.reduce((sum, order) => {
-      return sum + (order.totalAmount || order.amount || 0);
+      return sum + (order.totalAmount || order.finalAmount || order.amount || 0);
     }, 0);
 
     // Calculate trends
@@ -779,11 +885,57 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">Welcome back! Here's what's happening with your bookstore.</p>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header and Enhanced Filters */}
+      <div className="mb-6 sm:mb-8 flex flex-col justify-between items-start gap-5">
+        <div className="flex flex-col xl:flex-row justify-between w-full items-start xl:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard Analytics</h1>
+            <p className="text-gray-600 text-sm sm:text-base">Analyze your bookstore's complete performance.</p>
+          </div>
+          <div className="flex flex-wrap gap-1 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+            {['7days', '30days', '6months', '1year', 'all', 'custom'].map(tf => (
+              <button
+                key={tf}
+                onClick={() => setTimeFilter(tf)}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${timeFilter === tf ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                {tf === '7days' ? '7 Days' : tf === '30days' ? '30 Days' : tf === '6months' ? '6 Months' : tf === '1year' ? '1 Year' : tf === 'all' ? 'All Time' : 'Custom Date'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Extended Filter Panel */}
+        <div className="w-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-5 items-end relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+          {timeFilter === 'custom' && (
+            <>
+              <div className="flex-1 w-full relative">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Start Date</label>
+                <input type="date" value={dateRange.startDate} onChange={e => setDateRange(prev => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all text-sm" />
+              </div>
+              <div className="flex-1 w-full relative">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">End Date</label>
+                <input type="date" value={dateRange.endDate} onChange={e => setDateRange(prev => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all text-sm" />
+              </div>
+            </>
+          )}
+          <div className={`flex-1 w-full relative ${timeFilter !== 'custom' ? 'md:max-w-xs' : ''}`}>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Filter By Category</label>
+            <div className="relative">
+              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white outline-none transition-all appearance-none text-sm text-gray-800 cursor-pointer">
+                <option value="">All Categories Displayed</option>
+                {Array.from(new Set(rawBooks.map(b => b.category || 'Others').filter(Boolean))).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                ▼
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -796,7 +948,7 @@ const Dashboard = () => {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <StatCard
               title="Total Books"
               value={stats.totalBooks}
@@ -827,58 +979,87 @@ const Dashboard = () => {
             />
           </div>
 
+          {/* Low Stock Alert */}
+          {lowStockBooks.length > 0 && (
+            <div className="mb-6 sm:mb-8 bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center mb-4">
+                <Package className="h-5 w-5 text-yellow-600 mr-2" />
+                <h3 className="text-lg font-semibold text-yellow-800">Low Stock Alert</h3>
+              </div>
+              <div className="space-y-2">
+                {lowStockBooks.map((book) => (
+                  <div key={book._id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-yellow-200">
+                    <div className="flex items-center">
+                      {book.image && (
+                        <img src={`${IMG_BASE}${book.image}`} alt={book.title} className="h-8 w-6 object-cover rounded mr-3" />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">{book.title}</p>
+                        <p className="text-sm text-gray-600">by {book.author}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Stock: <span className="font-medium text-red-600">{book.stock}</span></p>
+                      <p className="text-sm text-gray-600">₹{book.price}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {/* Books Trend */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Books Added Trend</h3>
                 <BarChart3 className="h-5 w-5 text-gray-400" />
               </div>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <Line data={booksData} options={chartOptions} />
               </div>
             </div>
 
             {/* Orders Chart */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Monthly Orders</h3>
                 <Package className="h-5 w-5 text-gray-400" />
               </div>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <Bar data={ordersData} options={chartOptions} />
               </div>
             </div>
           </div>
 
           {/* Bottom Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
             {/* Category Distribution */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Books by Category</h3>
                 <BookOpen className="h-5 w-5 text-gray-400" />
               </div>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <Doughnut data={categoryData} options={doughnutOptions} />
               </div>
             </div>
 
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Weekly Revenue</h3>
                 <Calendar className="h-5 w-5 text-gray-400" />
               </div>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <Line data={revenueData} options={revenueChartOptions} />
               </div>
             </div>
           </div>
 
           {/* User Details */}
-          <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="mt-6 sm:mt-8 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Recent Users</h3>
               <Users className="h-5 w-5 text-gray-400" />
@@ -887,13 +1068,13 @@ const Dashboard = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Joined
                     </th>
                   </tr>
@@ -901,13 +1082,13 @@ const Dashboard = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.slice(0, 5).map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {user.name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {user.email}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -921,16 +1102,18 @@ const Dashboard = () => {
           </div>
 
           {/* Recent Activity */}
-          <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="mt-6 sm:mt-8 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
             <div className="space-y-4">
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 bg-${activity.color}-500 rounded-full`}></div>
-                    <span className="text-sm">{activity.icon}</span>
-                    <p className="text-sm text-gray-600">{activity.message}</p>
-                    <span className="text-xs text-gray-400 ml-auto">
+                  <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 bg-${activity.color}-500 rounded-full flex-shrink-0`}></div>
+                      <span className="text-sm">{activity.icon}</span>
+                      <p className="text-sm text-gray-600 flex-1">{activity.message}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 sm:ml-auto">
                       {getRelativeTime(activity.time)}
                     </span>
                   </div>
