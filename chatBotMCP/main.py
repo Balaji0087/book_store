@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from chat_service import ask_chatbot
+from config import FRONTEND_URL, ADMIN_URL
 
 app = FastAPI()
 
 # CORS configuration
 origins = [
-    "http://localhost:5173",   # React default
+    FRONTEND_URL,
+    ADMIN_URL,
+    "http://localhost:5173",   # React default for development
     "http://127.0.0.1:5173",
     "*"  # allow all (for development only)
 ]

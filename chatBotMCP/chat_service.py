@@ -7,10 +7,8 @@ from groq import AsyncGroq
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 
-from config import GROQ_API_KEY
+from config import GROQ_API_KEY, MCP_SERVER_URL
 from utils import parse_mcp_response, normalize
-
-MCP_SERVER_URL = "http://localhost:8000/sse"
 
 INDIAN_STATES = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
